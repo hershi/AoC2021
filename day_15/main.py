@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import re
 import sys
-from collections import Counter
+from collections import (Counter, deque)
 from itertools import (
     chain,
     repeat,
     zip_longest
 )
+
 
 class Grid:
     def __init__(self, input):
@@ -24,7 +25,8 @@ class Grid:
 
 
     def neighbors(self, x, y):
-        return [c for c in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)] if self.is_valid(*c)]
+        # return [c for c in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)] if self.is_valid(*c)]
+        return [c for c in [(x+1,y),(x,y+1)] if self.is_valid(*c)]
 
 
     def print_path(self, path):
@@ -44,44 +46,30 @@ def read_input():
         return Grid([l.strip() for l in input_file.readlines()])
 
 
-def _dfs(grid, current, end_node, visited, memo):
-    # End of route? Count it as 1
-    if current == end_node:
-        return grid.get(*current), [end_node]
+def flood_fill(grid, current, current_length, path, memo):
+    if current in memo and memo[current][0] <= current_length:
+        # We already found a shorter path to the current node. No more work
+        # to be done
+        # print(f'Skipping: {current} {current_length} {memo[current][0]}')
+        return
 
-    # Invalid move (already visited)
-    if current in visited:
-        return None
+    # print(f'Not skipping: {current} {current_length} {"init" if current not in memo else memo[current][0]}')
+    # We never visited this node, or the previous path we found to it is longer
+    # than this new one we found
+    path = path[:]
+    path += [current]
 
+    memo[current] = (current_length, path)
 
-    if current in memo:
-        return memo[current]
+    for neighbor in grid.neighbors(*current):
+        flood_fill(grid, neighbor, current_length + grid.get(*neighbor), path, memo)
 
-    # Neither of the above?
-    # Mark this cave as visited
-    # Count the number of paths that continue through each neighbor and add them up
-    visited = visited.copy()
-    visited.add(current)
-
-    # print(f'{len(visited)} {current}: {memo}')
-    paths = [_dfs(grid, n, end_node, visited, memo) for n in grid.neighbors(*current)]
-    paths = [p for p in paths if p]
-
-    if not paths:
-        return None
-
-    p = min(paths, key=lambda x:x[0])
-    memo[current] = (p[0] + grid.get(*current), p[1] + [current])
-    return memo[current]
-
-
-def dfs(grid):
-    return _dfs(grid, (0,0), (grid.width-1, grid.height-1), set(), dict())
 
 def part_1(grid):
-    result = dfs(grid)
+    memo = dict()
+    flood_fill(grid, (0,0), 0, [(0,0)], memo)
+    result = memo[(grid.width-1, grid.height-1)]
     print(result)
-    print()
     grid.print_path(result[1])
 
 
