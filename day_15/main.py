@@ -8,12 +8,30 @@ from itertools import (
     zip_longest
 )
 
+visit = 0
+skip = 0
 
 class Grid:
-    def __init__(self, input):
-        self.width = len(input[0])
-        self.height = len(input)
-        self.grid = [int(x) for x in chain(*input)]
+    def __init__(self, input, multiplier):
+        self.width = len(input[0]) * multiplier
+        self.height = len(input) * multiplier
+
+        grid = []
+        for l in input:
+            l = [int(x) for x in l]
+            grid.extend(l)
+            for i in range(multiplier-1):
+                l = [(x % 9 + 1) for x in l]
+                grid.extend(l)
+
+        g = grid[:]
+        for i in range(multiplier-1):
+            g = [(x % 9 + 1) for x in g]
+            grid.extend(g)
+
+        self.grid = grid
+
+        print(f'{len(self.grid)} , {self.width}x{self.height} , {self.width * self.height}')
 
 
     def get(self, x,y):
@@ -25,8 +43,8 @@ class Grid:
 
 
     def neighbors(self, x, y):
-        # return [c for c in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)] if self.is_valid(*c)]
-        return [c for c in [(x+1,y),(x,y+1)] if self.is_valid(*c)]
+        return [c for c in [(x+1,y),(x-1,y),(x,y+1),(x,y-1)] if self.is_valid(*c)]
+        # return [c for c in [(x+1,y),(x,y+1)] if self.is_valid(*c)]
 
 
     def print_path(self, path):
@@ -41,45 +59,38 @@ class Grid:
                 s+=f'{grid[y * self.height + x]}'
             print(s)
 
-def read_input():
+def read_input(multiplier=1):
     with open('./input.txt', 'r') as input_file:
-        return Grid([l.strip() for l in input_file.readlines()])
+        return Grid([l.strip() for l in input_file.readlines()], multiplier)
 
 
 def flood_fill(grid, current, current_length, path, memo):
-    if current in memo and memo[current][0] <= current_length:
-        # We already found a shorter path to the current node. No more work
-        # to be done
-        # print(f'Skipping: {current} {current_length} {memo[current][0]}')
-        return
+    q = deque()
+    q.append((current, current_length, path))
 
-    # print(f'Not skipping: {current} {current_length} {"init" if current not in memo else memo[current][0]}')
-    # We never visited this node, or the previous path we found to it is longer
-    # than this new one we found
-    path = path[:]
-    path += [current]
+    while q:
+        c,l,p = q.popleft()
+        # print(f'Handling {c}')
+        if c in memo and memo[c][0] <= l:
+            continue
 
-    memo[current] = (current_length, path)
-
-    for neighbor in grid.neighbors(*current):
-        flood_fill(grid, neighbor, current_length + grid.get(*neighbor), path, memo)
+        p = p[:]
+        p += [c]
+        memo[c] = (l, p)
+        q.extend([(n,l + grid.get(*n), p) for n in grid.neighbors(*c)])
 
 
 def part_1(grid):
     memo = dict()
-    flood_fill(grid, (0,0), 0, [(0,0)], memo)
+    flood_fill(grid, (0,0), 0, [], memo)
     result = memo[(grid.width-1, grid.height-1)]
     print(result)
     grid.print_path(result[1])
-
-
-def part_2(grid):
-    pass
+    print(result)
 
 
 sys.setrecursionlimit(1000000)
-grid = read_input()
-part_1(grid)
-part_2(grid)
+part_1(read_input(1))
+part_1(read_input(5))
 
 
