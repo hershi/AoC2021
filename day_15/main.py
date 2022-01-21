@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import re
 import sys
+from heapq import heappush, heappop
+from dataclasses import dataclass, field
+from typing import Any
 from collections import (Counter, deque)
 from itertools import (
     chain,
@@ -47,6 +50,15 @@ class Grid:
         # return [c for c in [(x+1,y),(x,y+1)] if self.is_valid(*c)]
 
 
+    def get_path(memo, end):
+        current = end
+        path = []
+        while current:
+            path.append(current)
+            current = memo[current][1]
+
+        return list(reversed(path))
+
     def print_path(self, path):
         grid = self.grid[:]
         for x,y in [(x,y) for x in range(self.width) for y in range(self.height)]:
@@ -64,29 +76,58 @@ def read_input(multiplier=1):
         return Grid([l.strip() for l in input_file.readlines()], multiplier)
 
 
-def flood_fill(grid, current, current_length, path, memo):
-    q = deque()
-    q.append((current, current_length, path))
+@dataclass(order=True)
+class ToVisit:
+    pos: Any=field(compare=False)
+    dist: int
+    prev: Any=field(compare=False)
 
-    while q:
-        c,l,p = q.popleft()
-        # print(f'Handling {c}')
-        if c in memo and memo[c][0] <= l:
+    def __init__(self, pos, dist, prev):
+        self.pos = pos
+        self.dist = dist
+        self.prev = prev
+
+def dijkstra(grid):
+    memo = dict()
+    to_visit = []
+
+    heappush(to_visit, ToVisit((0,0), 0, None))
+
+    while to_visit:
+        current = heappop(to_visit)
+
+        if current.pos in memo and memo[current.pos][0] <= current.dist:
             continue
 
-        p = p[:]
-        p += [c]
-        memo[c] = (l, p)
-        q.extend([(n,l + grid.get(*n), p) for n in grid.neighbors(*c)])
+        memo[current.pos] = (current.dist, current.prev)
+        for n in grid.neighbors(*current.pos):
+            heappush(to_visit, ToVisit(n, current.dist + grid.get(*n), current.pos))
+
+    return memo
+
+def flood_fill(grid):
+    memo = {(0,0): (0, None)}
+    to_visit = set([(0,0)])
+
+    while to_visit:
+        current = to_visit.pop()
+        # print(f'Handling {c}')
+
+        for n in grid.neighbors(*current):
+            l = memo[current][0] + grid.get(*n)
+            if n not in memo or memo[n][0] > l:
+                memo[n] = (l, current)
+                to_visit.add(n)
+
+    return memo
 
 
 def part_1(grid):
-    memo = dict()
-    flood_fill(grid, (0,0), 0, [], memo)
+    # memo = dijkstra(grid)
+    memo = flood_fill(grid)
     result = memo[(grid.width-1, grid.height-1)]
     print(result)
-    grid.print_path(result[1])
-    print(result)
+    grid.print_path(Grid.get_path(memo, result[1]))
 
 
 sys.setrecursionlimit(1000000)
