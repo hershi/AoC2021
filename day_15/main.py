@@ -105,26 +105,8 @@ def dijkstra(grid):
 
     return memo
 
-def flood_fill(grid):
-    memo = {(0,0): (0, None)}
-    to_visit = set([(0,0)])
-
-    while to_visit:
-        current = to_visit.pop()
-        # print(f'Handling {c}')
-
-        for n in grid.neighbors(*current):
-            l = memo[current][0] + grid.get(*n)
-            if n not in memo or memo[n][0] > l:
-                memo[n] = (l, current)
-                to_visit.add(n)
-
-    return memo
-
-
 def part_1(grid):
-    # memo = dijkstra(grid)
-    memo = flood_fill(grid)
+    memo = dijkstra(grid)
     result = memo[(grid.width-1, grid.height-1)]
     print(result)
     grid.print_path(Grid.get_path(memo, result[1]))
